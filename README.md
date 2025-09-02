@@ -229,6 +229,21 @@ npm run build
 npm run preview
 ```
 
+#### **5. Configurações de Logging (Opcional)**
+```env
+# Níveis de log: debug, info, warn, error, critical
+VITE_LOG_LEVEL=info
+
+# Habilitar/desabilitar transportes
+VITE_LOG_ENABLE_CONSOLE=true
+VITE_LOG_ENABLE_FILE=false
+VITE_LOG_ENABLE_REMOTE=false
+
+# Configurações remotas (se habilitado)
+VITE_LOG_REMOTE_ENDPOINT=https://your-logging-service.com/api/logs
+VITE_LOG_REMOTE_API_KEY=your_logging_api_key_here
+```
+
 O projeto estará disponível em: **http://localhost:8080**
 
 ---
@@ -384,6 +399,20 @@ VITE_TOKEN_STORAGE_KEY=starprint.token
 VITE_REFRESH_STORAGE_KEY=starprint.refresh
 VITE_SESSION_TIMEOUT=3600000
 VITE_REFRESH_THRESHOLD=300000
+```
+
+### **📝 Sistema de Logging**
+```env
+# Níveis de log configuráveis
+VITE_LOG_LEVEL=info
+
+# Transportes de log
+VITE_LOG_ENABLE_CONSOLE=true
+VITE_LOG_ENABLE_FILE=false
+VITE_LOG_ENABLE_REMOTE=false
+
+# Categorias de log
+VITE_LOG_CATEGORIES=auth,api,performance,security,user-actions
 ```
 
 ---

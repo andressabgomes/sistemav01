@@ -310,7 +310,7 @@ starprint-crm/
 #### **Hooks**
 - **usePermissions**: Controle de permissões
 - **useAuth**: Autenticação e usuário
-- **useDataCache**: Cache de dados
+- **useCache**: Cache de dados com TTL
 - **usePerformance**: Métricas de performance
 
 #### **Contexts**
