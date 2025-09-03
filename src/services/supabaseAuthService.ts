@@ -303,13 +303,7 @@ class SupabaseAuthService {
     });
   }
 
-  /**
-   * Verificar se o usuário está autenticado (método síncrono)
-   */
-  isAuthenticated(): boolean {
-    const session = supabase.auth.getSession();
-    return !!session;
-  }
+
 
   /**
    * Obter token de acesso

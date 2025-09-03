@@ -7,7 +7,7 @@ import { LoginPage } from './pages/LoginPage';
 import { TicketsPage } from './pages/TicketsPage';
 import { AccessDeniedPage } from './pages/AccessDeniedPage';
 import { NotFoundPage } from './pages/NotFoundPage';
-import { EnhancedDashboard } from './components/dashboard/EnhancedDashboard';
+import EnhancedDashboard from './components/dashboard/EnhancedDashboard';
 import { AppLayout } from './components/layouts/AppLayout';
 import queryClient from './lib/queryClient';
 
