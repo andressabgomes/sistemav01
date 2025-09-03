@@ -1,277 +1,219 @@
-import { Ticket, TicketStatus, TicketPriority, TicketFilters } from '@/types/entities';
+import { Ticket, TicketStatus, TicketPriority } from '@/types/entities';
+import supabaseTicketService from './supabaseTicketService';
 
 interface TicketResponse {
   success: boolean;
   data?: Ticket | Ticket[];
   error?: string;
-  message?: string;
 }
 
-interface PaginatedTicketResponse extends TicketResponse {
-  pagination?: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
+interface TicketFilters {
+  page?: number;
+  pageSize?: number;
+  status?: TicketStatus;
+  priority?: TicketPriority;
+  customer_id?: string;
+  assigned_user_id?: string;
+  search?: string;
 }
 
 class TicketService {
-  private baseURL: string;
-
-  constructor() {
-    this.baseURL = import.meta.env.VITE_XANO_BASE_URL || '';
-  }
-
-  private getAuthHeaders(): Record<string, string> {
-    const token = localStorage.getItem('starprint.token');
-    return {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
-    };
-  }
-
-  async getTickets(filters?: TicketFilters): Promise<PaginatedTicketResponse> {
+  /**
+   * Listar tickets com filtros
+   */
+  async listTickets(filters: TicketFilters = {}): Promise<TicketResponse> {
     try {
-      const queryParams = new URLSearchParams();
+      const response = await supabaseTicketService.listTickets(filters);
       
-      if (filters) {
-        Object.entries(filters).forEach(([key, value]) => {
-          if (value !== undefined && value !== null && value !== '') {
-            queryParams.append(key, String(value));
-          }
-        });
-      }
-
-      const response = await fetch(`${this.baseURL}/tickets?${queryParams.toString()}`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        return {
-          success: true,
-          data: data.tickets || data,
-          pagination: data.pagination,
-        };
-      } else {
-        return {
-          success: false,
-          error: data.message || 'Erro ao buscar tickets',
-        };
-      }
+      return {
+        success: true,
+        data: response.data
+      };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Erro de conexão',
+        error: error instanceof Error ? error.message : 'Erro ao listar tickets'
       };
     }
   }
 
+  /**
+   * Obter ticket por ID
+   */
   async getTicket(id: string): Promise<TicketResponse> {
     try {
-      const response = await fetch(`${this.baseURL}/tickets/${id}`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        return {
-          success: true,
-          data: data.ticket || data,
-        };
-      } else {
+      const ticket = await supabaseTicketService.getTicket(id);
+      
+      if (!ticket) {
         return {
           success: false,
-          error: data.message || 'Erro ao buscar ticket',
+          error: 'Ticket não encontrado'
         };
       }
+
+      return {
+        success: true,
+        data: ticket
+      };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Erro de conexão',
+        error: error instanceof Error ? error.message : 'Erro ao obter ticket'
       };
     }
   }
 
-  async createTicket(ticketData: Omit<Ticket, 'id' | 'created_at' | 'updated_at'>): Promise<TicketResponse> {
+  /**
+   * Criar novo ticket
+   */
+  async createTicket(ticketData: {
+    title: string;
+    description?: string;
+    priority?: TicketPriority;
+    client_id: string;
+    assigned_to?: string;
+  }): Promise<TicketResponse> {
     try {
-      const response = await fetch(`${this.baseURL}/tickets`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(ticketData),
+      const ticket = await supabaseTicketService.createTicket({
+        title: ticketData.title,
+        description: ticketData.description,
+        priority: ticketData.priority || 'medium',
+        status: 'open',
+        client_id: ticketData.client_id,
+        assigned_to: ticketData.assigned_to,
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        return {
-          success: true,
-          data: data.ticket || data,
-          message: 'Ticket criado com sucesso',
-        };
-      } else {
-        return {
-          success: false,
-          error: data.message || 'Erro ao criar ticket',
-        };
-      }
+      return {
+        success: true,
+        data: ticket
+      };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Erro de conexão',
+        error: error instanceof Error ? error.message : 'Erro ao criar ticket'
       };
     }
   }
 
-  async updateTicket(id: string, ticketData: Partial<Ticket>): Promise<TicketResponse> {
+  /**
+   * Atualizar ticket
+   */
+  async updateTicket(id: string, updates: {
+    title?: string;
+    description?: string;
+    status?: TicketStatus;
+    priority?: TicketPriority;
+    assigned_to?: string;
+  }): Promise<TicketResponse> {
     try {
-      const response = await fetch(`${this.baseURL}/tickets/${id}`, {
-        method: 'PUT',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(ticketData),
-      });
+      const ticket = await supabaseTicketService.updateTicket(id, updates);
 
-      const data = await response.json();
-
-      if (response.ok) {
-        return {
-          success: true,
-          data: data.ticket || data,
-          message: 'Ticket atualizado com sucesso',
-        };
-      } else {
-        return {
-          success: false,
-          error: data.message || 'Erro ao atualizar ticket',
-        };
-      }
+      return {
+        success: true,
+        data: ticket
+      };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Erro de conexão',
+        error: error instanceof Error ? error.message : 'Erro ao atualizar ticket'
       };
     }
   }
 
+  /**
+   * Deletar ticket
+   */
   async deleteTicket(id: string): Promise<TicketResponse> {
     try {
-      const response = await fetch(`${this.baseURL}/tickets/${id}`, {
-        method: 'DELETE',
-        headers: this.getAuthHeaders(),
-      });
+      await supabaseTicketService.deleteTicket(id);
 
-      const data = await response.json();
-
-      if (response.ok) {
-        return {
-          success: true,
-          message: 'Ticket excluído com sucesso',
-        };
-      } else {
-        return {
-          success: false,
-          error: data.message || 'Erro ao excluir ticket',
-        };
-      }
+      return {
+        success: true
+      };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Erro de conexão',
+        error: error instanceof Error ? error.message : 'Erro ao deletar ticket'
       };
     }
   }
 
-  async updateTicketStatus(id: string, status: TicketStatus): Promise<TicketResponse> {
+  /**
+   * Atribuir ticket
+   */
+  async assignTicket(ticketId: string, userId: string): Promise<TicketResponse> {
     try {
-      const response = await fetch(`${this.baseURL}/tickets/${id}/status`, {
-        method: 'PATCH',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify({ status }),
-      });
+      const ticket = await supabaseTicketService.assignTicket(ticketId, userId);
 
-      const data = await response.json();
-
-      if (response.ok) {
-        return {
-          success: true,
-          data: data.ticket || data,
-          message: 'Status do ticket atualizado com sucesso',
-        };
-      } else {
-        return {
-          success: false,
-          error: data.message || 'Erro ao atualizar status do ticket',
-        };
-      }
+      return {
+        success: true,
+        data: ticket
+      };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Erro de conexão',
+        error: error instanceof Error ? error.message : 'Erro ao atribuir ticket'
       };
     }
   }
 
-  async updateTicketPriority(id: string, priority: TicketPriority): Promise<TicketResponse> {
+  /**
+   * Atualizar status do ticket
+   */
+  async updateTicketStatus(ticketId: string, status: TicketStatus): Promise<TicketResponse> {
     try {
-      const response = await fetch(`${this.baseURL}/tickets/${id}/priority`, {
-        method: 'PATCH',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify({ priority }),
-      });
+      const ticket = await supabaseTicketService.updateTicketStatus(ticketId, status);
 
-      const data = await response.json();
-
-      if (response.ok) {
-        return {
-          success: true,
-          data: data.ticket || data,
-          message: 'Prioridade do ticket atualizada com sucesso',
-        };
-      } else {
-        return {
-          success: false,
-          error: data.message || 'Erro ao atualizar prioridade do ticket',
-        };
-      }
+      return {
+        success: true,
+        data: ticket
+      };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Erro de conexão',
+        error: error instanceof Error ? error.message : 'Erro ao atualizar status do ticket'
       };
     }
   }
 
-  async assignTicket(id: string, agentId: string): Promise<TicketResponse> {
+  /**
+   * Obter estatísticas dos tickets
+   */
+  async getTicketStats(): Promise<{
+    success: boolean;
+    data?: any;
+    error?: string;
+  }> {
     try {
-      const response = await fetch(`${this.baseURL}/tickets/${id}/assign`, {
-        method: 'PATCH',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify({ agent_id: agentId }),
-      });
+      const stats = await supabaseTicketService.getTicketStats();
 
-      const data = await response.json();
-
-      if (response.ok) {
-        return {
-          success: true,
-          data: data.ticket || data,
-          message: 'Ticket atribuído com sucesso',
-        };
-      } else {
-        return {
-          success: false,
-          error: data.message || 'Erro ao atribuir ticket',
-        };
-      }
+      return {
+        success: true,
+        data: stats
+      };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Erro de conexão',
+        error: error instanceof Error ? error.message : 'Erro ao obter estatísticas'
+      };
+    }
+  }
+
+  /**
+   * Obter tickets por cliente
+   */
+  async getTicketsByClient(clientId: string): Promise<TicketResponse> {
+    try {
+      const tickets = await supabaseTicketService.getTicketsByClient(clientId);
+
+      return {
+        success: true,
+        data: tickets
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro ao obter tickets do cliente'
       };
     }
   }

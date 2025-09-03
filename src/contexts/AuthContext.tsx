@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import authService from '../services/authService';
+import supabaseAuthService from '../services/supabaseAuthService';
 import { User, LoginCredentials } from '../types/entities';
 
 interface AuthContextType {
@@ -24,16 +24,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const loadCurrentUser = async () => {
       try {
-        // Verificar se há token válido
-        if (authService.isAuthenticated()) {
-          const response = await authService.getMe();
-          if (response.success && response.data) {
-            setUser(response.data);
-          } else {
-            // Token inválido, limpar estado
-            setUser(null);
-          }
-        }
+        const currentUser = await supabaseAuthService.getCurrentUser();
+        setUser(currentUser);
       } catch (error) {
         console.error('Erro ao carregar usuário atual:', error);
         setUser(null);
@@ -43,20 +35,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     loadCurrentUser();
+
+    // Escutar mudanças na autenticação
+    const { data: { subscription } } = supabaseAuthService.onAuthStateChange((user) => {
+      setUser(user);
+      setLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (credentials: LoginCredentials): Promise<boolean> => {
     try {
       setLoading(true);
-      const response = await authService.login(credentials);
+      const response = await supabaseAuthService.login(credentials);
       
       if (response.success && response.data) {
-        // Obter dados do usuário após login
-        const meResponse = await authService.getMe();
-        if (meResponse.success && meResponse.data) {
-          setUser(meResponse.data);
-          return true;
-        }
+        setUser(response.data.user);
+        return true;
       }
       
       return false;
@@ -71,7 +69,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async (): Promise<void> => {
     try {
       setLoading(true);
-      await authService.logout();
+      await supabaseAuthService.logout();
       setUser(null);
     } catch (error) {
       console.error('Erro no logout:', error);
