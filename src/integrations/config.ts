@@ -9,8 +9,8 @@ export interface IntegrationConfig {
 }
 
 export const integrationConfig: IntegrationConfig = {
-  backend: 'xano', // Configurado para usar Xano como backend principal
-  enableMigration: true,
+  backend: 'supabase', // Configurado para usar Supabase como backend principal
+  enableMigration: false,
   syncInterval: 30000, // 30 segundos
 };
 

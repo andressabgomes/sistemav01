@@ -202,6 +202,18 @@ export interface AuthNotification {
 }
 
 // ============================================================================
+// PERMISSÕES POR ROLE
+// ============================================================================
+
+export const rolePermissions: Record<string, string[]> = {
+  ADMIN: ['dashboard', 'equipe', 'escalas', 'metas', 'clientes', 'atendimento', 'monitoramento', 'relatorios', 'administracao'],
+  MANAGER: ['dashboard', 'equipe', 'escalas', 'metas', 'clientes', 'monitoramento', 'relatorios'],
+  AGENT: ['dashboard', 'clientes', 'atendimento'],
+  USER: ['dashboard', 'clientes', 'atendimento'],
+  SUPPORT: ['dashboard', 'atendimento']
+};
+
+// ============================================================================
 // EXPORTAÇÕES
 // ============================================================================
 
