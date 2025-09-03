@@ -3,6 +3,41 @@
 // ============================================================================
 
 // ============================================================================
+// ARTIGOS E BASE DE CONHECIMENTO
+// ============================================================================
+
+export interface Article extends BaseEntity {
+  titulo: string;
+  categoria: string;
+  conteudo: string;
+  tags: string[];
+  autor: string;
+  status: ArticleStatus;
+  visualizacoes: number;
+  avaliacoes: number;
+  media_avaliacao: number;
+  categoria_obj?: Category;
+}
+
+export type ArticleStatus = 'rascunho' | 'publicado' | 'arquivado' | 'revisao';
+
+export interface Category extends BaseEntity {
+  nome: string;
+  cor: string;
+  descricao?: string;
+  artigos_count?: number;
+}
+
+export interface ArticleFormData {
+  titulo: string;
+  categoria: string;
+  conteudo: string;
+  tags: string[];
+  autor: string;
+  status: ArticleStatus;
+}
+
+// ============================================================================
 // TIPOS BASE
 // ============================================================================
 

@@ -1,8 +1,30 @@
-import React, { useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Search, Filter, Plus, Clock, User, MessageSquare, AlertCircle, Star } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { 
+  MessageSquare, 
+  Clock, 
+  CheckCircle, 
+  AlertCircle, 
+  Users, 
+  TrendingUp, 
+  Filter,
+  Search,
+  MoreHorizontal,
+  Phone,
+  Mail,
+  MessageCircle,
+  Plus,
+  User,
+  Star
+} from 'lucide-react';
+import { Ticket, TicketStatus, TicketPriority } from '@/types/entities';
 import AvaliacaoModal from './AvaliacaoModal';
 
 const TicketsAtivos = () => {
@@ -95,13 +117,23 @@ const TicketsAtivos = () => {
     return null;
   };
 
-  const handleFinalizarComAvaliacao = (ticket: any) => {
+  const handleFinalizarComAvaliacao = (ticket: Ticket) => {
     setAvaliacaoModal({
       isOpen: true,
       ticketId: ticket.id,
       clienteNome: ticket.cliente,
       agenteNome: ticket.agente
     });
+  };
+
+  const handleStatusChange = (ticketId: string, newStatus: TicketStatus) => {
+    // Implementar mudança de status
+    console.log(`Mudando status do ticket ${ticketId} para ${newStatus}`);
+  };
+
+  const handlePriorityChange = (ticketId: string, newPriority: TicketPriority) => {
+    // Implementar mudança de prioridade
+    console.log(`Mudando prioridade do ticket ${ticketId} para ${newPriority}`);
   };
 
   return (

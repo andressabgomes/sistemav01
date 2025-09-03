@@ -197,7 +197,7 @@ export const updateConfig = <K extends keyof AppConfig>(
   key: K,
   value: AppConfig[K]
 ): void => {
-  (APP_CONFIG as any)[key] = value;
+  (APP_CONFIG as Record<string, unknown>)[key] = value;
 };
 
 export const getEnvironmentVariable = (key: string, defaultValue?: string): string => {
@@ -258,3 +258,35 @@ export const getDynamicConfig = () => {
 // ============================================================================
 
 export default APP_CONFIG;
+
+export const formatCurrency = (value: number, currency: string = 'BRL'): string => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency,
+  }).format(value);
+};
+
+export const formatPercentage = (value: number): string => {
+  return `${value.toFixed(1)}%`;
+};
+
+export const formatDate = (date: string | Date): string => {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  return dateObj.toLocaleDateString('pt-BR');
+};
+
+export const formatDateTime = (date: string | Date): string => {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  return dateObj.toLocaleString('pt-BR');
+};
+
+export const debounce = <T extends (...args: unknown[]) => unknown>(
+  func: T,
+  wait: number
+): ((...args: Parameters<T>) => void) => {
+  let timeout: NodeJS.Timeout;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+};

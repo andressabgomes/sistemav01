@@ -120,7 +120,7 @@ export const useLogger = (options: UseLoggerOptions): LoggerMethods => {
       // Log automático de performance
       logPerformance(label, duration);
     }
-  }, [enablePerformance, baseLogger]);
+  }, [enablePerformance, baseLogger, logPerformance]);
 
   const group = useCallback((label: string) => {
     baseLogger.group(label);

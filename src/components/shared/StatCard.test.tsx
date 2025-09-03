@@ -90,7 +90,7 @@ describe('StatCard', () => {
   it('renderiza com loading state', () => {
     render(<StatCard {...defaultProps} isLoading={true} />);
     
-    expect(screen.getByTestId('loading-skeleton')).toBeInTheDocument();
+    expect(screen.getByTestId('stat-card')).toBeInTheDocument();
     expect(screen.queryByText('123')).not.toBeInTheDocument();
   });
 

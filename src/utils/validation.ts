@@ -94,7 +94,7 @@ export const validateCNPJ = (cnpj: string): boolean => {
     sum += parseInt(cleanCNPJ.charAt(i)) * weights1[i];
   }
   let remainder = sum % 11;
-  let digit1 = remainder < 2 ? 0 : 11 - remainder;
+  const digit1 = remainder < 2 ? 0 : 11 - remainder;
   if (digit1 !== parseInt(cleanCNPJ.charAt(12))) return false;
   
   // Validação do segundo dígito verificador
@@ -104,7 +104,7 @@ export const validateCNPJ = (cnpj: string): boolean => {
     sum += parseInt(cleanCNPJ.charAt(i)) * weights2[i];
   }
   remainder = sum % 11;
-  let digit2 = remainder < 2 ? 0 : 11 - remainder;
+  const digit2 = remainder < 2 ? 0 : 11 - remainder;
   if (digit2 !== parseInt(cleanCNPJ.charAt(13))) return false;
   
   return true;
@@ -173,6 +173,28 @@ export const validatePassword = (password: string): {
     isValid: errors.length === 0,
     errors
   };
+};
+
+// Função para validar CEP
+export const validateZipCode = (zipCode: string): boolean => {
+  const cleanZipCode = zipCode.replace(/\D/g, '');
+  return cleanZipCode.length === 8;
+};
+
+// Função para validar campo obrigatório
+export const validateRequired = (value: string | null | undefined): boolean => {
+  if (value === null || value === undefined) return false;
+  return value.trim().length > 0;
+};
+
+// Função para validar tamanho mínimo
+export const validateMinLength = (value: string, minLength: number): boolean => {
+  return value.length >= minLength;
+};
+
+// Função para validar tamanho máximo
+export const validateMaxLength = (value: string, maxLength: number): boolean => {
+  return value.length <= maxLength;
 };
 
 // Tipo para erros de validação

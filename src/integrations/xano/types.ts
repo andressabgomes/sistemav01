@@ -1,45 +1,39 @@
-import { 
-  BaseEntity, 
-  BaseResponse, 
-  PaginatedResponse, 
-  QueryParams,
-  User,
-  Client,
-  Ticket,
-  KnowledgeArticle,
-  TeamMember,
-  NPSResponse,
-  Report
-} from '@/types/entities';
-
 // ============================================================================
-// TIPOS ESPECÍFICOS DO XANO.IO - STARPRINT CRM
+// TIPOS PARA INTEGRAÇÃO COM XANO.IO - STARPRINT CRM
 // ============================================================================
 
 // ============================================================================
-// TIPOS DE RESPOSTA DA API
+// TIPOS BASE
 // ============================================================================
 
-export interface XanoResponse<T> extends BaseResponse<T> {
-  meta?: {
-    timestamp: string;
-    version: string;
-    requestId: string;
-  };
+export interface XanoBaseResponse {
+  success: boolean;
+  message?: string;
+  data?: unknown;
+  error?: string;
+  timestamp?: string;
 }
 
-export interface XanoPaginatedResponse<T> extends PaginatedResponse<T> {
-  meta?: {
-    timestamp: string;
-    version: string;
-    requestId: string;
+export interface XanoResponse<T> extends XanoBaseResponse {
+  data: T;
+}
+
+export interface XanoPaginatedResponse<T> extends XanoBaseResponse {
+  data: T[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
   };
 }
 
 export interface XanoError {
   code: string;
   message: string;
-  details?: Record<string, unknown>;
+  details?: unknown;
   timestamp: string;
   requestId?: string;
   path?: string;
@@ -56,334 +50,190 @@ export interface XanoAuthRequest {
   rememberMe?: boolean;
 }
 
-export interface XanoAuthResponse {
-  success: boolean;
-  data?: {
-    user: User;
+export interface XanoAuthResponse extends XanoBaseResponse {
+  data: {
     token: string;
     refreshToken: string;
-    expiresIn: number;
-    tokenType: 'Bearer';
+    user: XanoUser;
+    expiresAt: string;
   };
-  error?: XanoError;
 }
 
 export interface XanoRefreshRequest {
   refreshToken: string;
 }
 
-export interface XanoRefreshResponse {
-  success: boolean;
-  data?: {
+export interface XanoRefreshResponse extends XanoBaseResponse {
+  data: {
     token: string;
     refreshToken: string;
-    expiresIn: number;
-    tokenType: 'Bearer';
+    expiresAt: string;
   };
-  error?: XanoError;
 }
 
 export interface XanoLogoutRequest {
   token: string;
-  refreshToken: string;
 }
 
-export interface XanoLogoutResponse {
-  success: boolean;
-  message: string;
+export interface XanoLogoutResponse extends XanoBaseResponse {
+  data: {
+    message: string;
+  };
 }
 
-// ============================================================================
-// TIPOS DE CLIENTE
-// ============================================================================
-
-export interface XanoClientRequest {
-  code?: string;
-  company_name: string;
-  trade_name?: string;
-  document_type: string;
-  document_number: string;
-  client_type: string;
-  segment: string;
-  size: string;
-  status: string;
-  priority: string;
+export interface XanoUser {
+  id: string;
   email: string;
-  phone: string;
-  website?: string;
+  name: string;
+  role: UserRole;
+  permissions: string[];
+  avatar?: string;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAt?: string;
+  isActive: boolean;
+}
+
+export type UserRole = 'ADMIN' | 'MANAGER' | 'USER' | 'GUEST';
+
+// ============================================================================
+// TIPOS DE ENTIDADES
+// ============================================================================
+
+export interface XanoClient {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  company?: string;
+  status: ClientStatus;
+  tier: ClientTier;
+  assignedTo?: string;
+  createdAt: string;
+  updatedAt: string;
+  lastContactAt?: string;
   notes?: string;
   tags?: string[];
-  assigned_agent_id?: string;
 }
 
-export interface XanoClientResponse extends XanoResponse<Client> {}
+export type ClientStatus = 'active' | 'inactive' | 'prospect' | 'lead';
+export type ClientTier = 'bronze' | 'silver' | 'gold' | 'platinum';
 
-export interface XanoClientListResponse extends XanoPaginatedResponse<Client> {}
-
-export interface XanoClientSearchParams extends QueryParams {
-  search?: string;
-  filters?: {
-    client_type?: string[];
-    segment?: string[];
-    size?: string[];
-    status?: string[];
-    priority?: string[];
-    assigned_agent_id?: string;
-    tags?: string[];
-  };
-}
-
-// ============================================================================
-// TIPOS DE TICKET
-// ============================================================================
-
-export interface XanoTicketRequest {
-  ticket_number?: string;
-  client_id: string;
-  assigned_agent_id?: string;
+export interface XanoTicket {
+  id: string;
+  clientId: string;
+  agentId?: string;
   title: string;
   description: string;
-  category: string;
-  priority: string;
-  status: string;
-  source: string;
+  status: TicketStatus;
+  priority: TicketPriority;
+  category: TicketCategory;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt?: string;
+  assignedAt?: string;
   tags?: string[];
-  estimated_resolution_time?: number;
-  is_urgent?: boolean;
-  parent_ticket_id?: string;
+  attachments?: string[];
 }
 
-export interface XanoTicketResponse extends XanoResponse<Ticket> {}
+export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed' | 'cancelled';
+export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type TicketCategory = 'technical' | 'billing' | 'general' | 'feature_request' | 'bug_report';
 
-export interface XanoTicketListResponse extends XanoPaginatedResponse<Ticket> {}
-
-export interface XanoTicketSearchParams extends QueryParams {
-  search?: string;
-  filters?: {
-    client_id?: string;
-    assigned_agent_id?: string;
-    category?: string[];
-    priority?: string[];
-    status?: string[];
-    source?: string[];
-    tags?: string[];
-    is_urgent?: boolean;
-    created_after?: string;
-    created_before?: string;
-  };
-}
-
-// ============================================================================
-// TIPOS DE BASE DE CONHECIMENTO
-// ============================================================================
-
-export interface XanoArticleRequest {
+export interface XanoArticle {
+  id: string;
   title: string;
-  slug?: string;
   content: string;
-  excerpt: string;
-  category_id: string;
-  tags?: string[];
-  author_id?: string;
-  status?: string;
-  visibility?: string;
-  is_featured?: boolean;
-  seo_title?: string;
-  seo_description?: string;
-  seo_keywords?: string[];
-}
-
-export interface XanoArticleResponse extends XanoResponse<KnowledgeArticle> {}
-
-export interface XanoArticleListResponse extends XanoPaginatedResponse<KnowledgeArticle> {}
-
-export interface XanoArticleSearchParams extends QueryParams {
-  search?: string;
-  filters?: {
-    category_id?: string;
-    author_id?: string;
-    status?: string[];
-    visibility?: string[];
-    tags?: string[];
-    is_featured?: boolean;
-    created_after?: string;
-    created_before?: string;
-  };
-}
-
-// ============================================================================
-// TIPOS DE EQUIPE
-// ============================================================================
-
-export interface XanoTeamMemberRequest {
-  user_id: string;
-  team_id: string;
-  role: string;
-  start_date: string;
-  end_date?: string;
-  is_active?: boolean;
-  skills?: string[];
-  specializations?: string[];
-  max_tickets?: number;
-}
-
-export interface XanoTeamMemberResponse extends XanoResponse<TeamMember> {}
-
-export interface XanoTeamMemberListResponse extends XanoPaginatedResponse<TeamMember> {}
-
-export interface XanoTeamMemberSearchParams extends QueryParams {
-  search?: string;
-  filters?: {
-    team_id?: string;
-    role?: string[];
-    is_active?: boolean;
-    skills?: string[];
-    specializations?: string[];
-  };
-}
-
-// ============================================================================
-// TIPOS DE NPS
-// ============================================================================
-
-export interface XanoNPSRequest {
-  ticket_id?: string;
-  client_id: string;
-  score: number;
-  feedback?: string;
-  follow_up_required?: boolean;
-  follow_up_notes?: string;
-  tags?: string[];
-}
-
-export interface XanoNPSResponse extends XanoResponse<NPSResponse> {}
-
-export interface XanoNPSListResponse extends XanoPaginatedResponse<NPSResponse> {}
-
-export interface XanoNPSSearchParams extends QueryParams {
-  search?: string;
-  filters?: {
-    client_id?: string;
-    ticket_id?: string;
-    score?: number[];
-    category?: string[];
-    follow_up_required?: boolean;
-    follow_up_status?: string[];
-    created_after?: string;
-    created_before?: string;
-  };
-}
-
-// ============================================================================
-// TIPOS DE RELATÓRIOS
-// ============================================================================
-
-export interface XanoReportRequest {
-  name: string;
-  description: string;
-  type: string;
   category: string;
-  parameters: Record<string, unknown>;
-  schedule?: Record<string, unknown>;
-  recipients?: string[];
-  format: string;
-  status?: string;
+  tags: string[];
+  authorId: string;
+  isPublished: boolean;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt?: string;
+  viewCount: number;
+  helpfulCount: number;
 }
 
-export interface XanoReportResponse extends XanoResponse<Report> {}
-
-export interface XanoReportListResponse extends XanoPaginatedResponse<Report> {}
-
-export interface XanoReportSearchParams extends QueryParams {
-  search?: string;
-  filters?: {
-    type?: string[];
-    category?: string[];
-    status?: string[];
-    format?: string[];
-    created_after?: string;
-    created_before?: string;
-  };
-}
-
-// ============================================================================
-// TIPOS DE OPERAÇÕES CRUD GENÉRICAS
-// ============================================================================
-
-export interface XanoCreateRequest<T> {
-  data: Partial<T>;
-  options?: {
-    returnData?: boolean;
-    validateOnly?: boolean;
-    ignorePermissions?: boolean;
-  };
-}
-
-export interface XanoUpdateRequest<T> {
+export interface XanoTeamMember {
   id: string;
-  data: Partial<T>;
-  options?: {
-    returnData?: boolean;
-    validateOnly?: boolean;
-    ignorePermissions?: boolean;
-    merge?: boolean;
-  };
+  userId: string;
+  role: UserRole;
+  department: string;
+  skills: string[];
+  maxTickets: number;
+  currentLoad: number;
+  isAvailable: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface XanoDeleteRequest {
+export interface XanoSchedule {
   id: string;
-  options?: {
-    softDelete?: boolean;
-    cascade?: boolean;
-    ignorePermissions?: boolean;
-  };
+  userId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  type: ScheduleType;
+  status: ScheduleStatus;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface XanoBulkRequest<T> {
-  operations: Array<{
-    type: 'create' | 'update' | 'delete';
-    data?: Partial<T>;
-    id?: string;
-    options?: Record<string, unknown>;
-  }>;
-  options?: {
-    transaction?: boolean;
-    validateOnly?: boolean;
-    ignorePermissions?: boolean;
-  };
+export type ScheduleType = 'work' | 'break' | 'meeting' | 'training' | 'off';
+export type ScheduleStatus = 'scheduled' | 'confirmed' | 'cancelled' | 'completed';
+
+export interface XanoGoal {
+  id: string;
+  userId: string;
+  title: string;
+  description: string;
+  target: number;
+  current: number;
+  unit: string;
+  period: GoalPeriod;
+  status: GoalStatus;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface XanoBulkResponse {
-  success: boolean;
-  results: Array<{
-    operation: string;
-    success: boolean;
-    id?: string;
-    data?: unknown;
-    error?: XanoError;
-  }>;
-  summary: {
-    total: number;
-    successful: number;
-    failed: number;
-  };
+export type GoalPeriod = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+export type GoalStatus = 'not_started' | 'in_progress' | 'completed' | 'overdue';
+
+export interface XanoNPS {
+  id: string;
+  ticketId: string;
+  rating: number;
+  feedback?: string;
+  category: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface XanoMonitoring {
+  id: string;
+  userId: string;
+  sessionId: string;
+  startTime: string;
+  endTime?: string;
+  duration?: number;
+  activity: MonitoringActivity[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MonitoringActivity {
+  type: string;
+  timestamp: string;
+  details?: unknown;
 }
 
 // ============================================================================
-// TIPOS DE FILTROS E QUERIES
+// TIPOS DE QUERY E FILTROS
 // ============================================================================
-
-export interface XanoFilter {
-  field: string;
-  operator: 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'like' | 'ilike' | 'in' | 'not_in' | 'is_null' | 'is_not_null';
-  value: string | number | boolean | string[] | number[] | null;
-}
-
-export interface XanoSort {
-  field: string;
-  direction: 'asc' | 'desc';
-  nulls?: 'first' | 'last';
-}
 
 export interface XanoQuery {
   select?: string[];
@@ -392,146 +242,168 @@ export interface XanoQuery {
   limit?: number;
   offset?: number;
   page?: number;
-  include?: string[];
-  exclude?: string[];
   search?: string;
   searchFields?: string[];
-  groupBy?: string[];
-  having?: XanoFilter[];
+}
+
+export interface XanoFilter {
+  field: string;
+  operator: FilterOperator;
+  value: unknown;
+}
+
+export type FilterOperator = 
+  | 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte'
+  | 'in' | 'nin' | 'contains' | 'not_contains'
+  | 'starts_with' | 'ends_with' | 'is_null' | 'is_not_null';
+
+export interface XanoSort {
+  field: string;
+  direction: 'asc' | 'desc';
+  nulls?: 'first' | 'last';
 }
 
 // ============================================================================
-// TIPOS DE WEBHOOKS E EVENTOS
+// TIPOS DE REQUISIÇÕES
 // ============================================================================
 
-export interface XanoWebhookPayload<T = unknown> {
-  event: string;
-  timestamp: string;
-  data: T;
-  metadata: {
-    table: string;
-    operation: 'insert' | 'update' | 'delete';
-    recordId: string;
-    userId?: string;
-    sessionId?: string;
-    ipAddress?: string;
-    userAgent?: string;
+export interface XanoCreateRequest<T> {
+  data: Partial<T>;
+  options?: {
+    returnData?: boolean;
+    validateOnly?: boolean;
   };
 }
 
-export interface XanoWebhookConfig {
-  id: string;
-  name: string;
-  url: string;
-  events: string[];
-  table: string;
-  isActive: boolean;
-  headers?: Record<string, string>;
-  retryCount?: number;
-  retryDelay?: number;
-  timeout?: number;
+export interface XanoUpdateRequest<T> {
+  data: Partial<T>;
+  options?: {
+    returnData?: boolean;
+    validateOnly?: boolean;
+  };
 }
 
-// ============================================================================
-// TIPOS DE CONFIGURAÇÃO E METADADOS
-// ============================================================================
+export interface XanoDeleteRequest {
+  options?: {
+    softDelete?: boolean;
+    returnData?: boolean;
+  };
+}
 
-export interface XanoTableInfo {
-  name: string;
-  schema: Record<string, {
-    type: string;
-    nullable: boolean;
-    defaultValue?: unknown;
-    isPrimary?: boolean;
-    isUnique?: boolean;
-    isIndexed?: boolean;
-    references?: {
-      table: string;
-      column: string;
+export interface XanoBulkRequest<T> {
+  operations: Array<{
+    type: 'create' | 'update' | 'delete';
+    data?: Partial<T>;
+    id?: string;
+  }>;
+  options?: {
+    returnData?: boolean;
+    validateOnly?: boolean;
+  };
+}
+
+export interface XanoBulkResponse<T> extends XanoBaseResponse {
+  data: {
+    results: Array<{
+      success: boolean;
+      data?: T;
+      error?: string;
+    }>;
+    summary: {
+      total: number;
+      successful: number;
+      failed: number;
     };
-  }>;
-  indexes: Array<{
+  };
+}
+
+// ============================================================================
+// TIPOS DE CONFIGURAÇÃO
+// ============================================================================
+
+export interface XanoConfig {
+  baseURL: string;
+  apiKey: string;
+  timeout: number;
+  retryAttempts: number;
+  retryDelay: number;
+  enableLogging: boolean;
+  logLevel: 'debug' | 'info' | 'warn' | 'error';
+}
+
+// ============================================================================
+// TIPOS DE EVENTOS
+// ============================================================================
+
+export interface XanoEvent {
+  type: string;
+  payload: unknown;
+  timestamp: string;
+  userId?: string;
+  sessionId?: string;
+}
+
+export interface XanoWebhookPayload {
+  event: string;
+  data: unknown;
+  timestamp: string;
+  signature?: string;
+}
+
+// ============================================================================
+// TIPOS DE CACHE
+// ============================================================================
+
+export interface XanoCacheItem<T> {
+  key: string;
+  data: T;
+  timestamp: number;
+  ttl: number;
+}
+
+export interface XanoCacheConfig {
+  enabled: boolean;
+  ttl: number;
+  maxItems: number;
+  strategy: 'lru' | 'fifo' | 'ttl';
+}
+
+// ============================================================================
+// TIPOS DE VALIDAÇÃO
+// ============================================================================
+
+export interface XanoValidationError {
+  field: string;
+  message: string;
+  code: string;
+  value?: unknown;
+}
+
+export interface XanoValidationResult {
+  isValid: boolean;
+  errors: XanoValidationError[];
+}
+
+// ============================================================================
+// TIPOS DE MONITORAMENTO
+// ============================================================================
+
+export interface XanoMetrics {
+  requestCount: number;
+  successCount: number;
+  errorCount: number;
+  averageResponseTime: number;
+  lastRequestAt?: string;
+  lastErrorAt?: string;
+}
+
+export interface XanoHealthCheck {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  checks: Array<{
     name: string;
-    columns: string[];
-    type: 'btree' | 'hash' | 'gin' | 'gist';
-    isUnique: boolean;
+    status: 'pass' | 'fail' | 'warn';
+    responseTime?: number;
+    error?: string;
   }>;
-  rowCount: number;
-  size: number;
-  lastAnalyzed: string;
+  timestamp: string;
 }
-
-export interface XanoWorkspaceInfo {
-  id: string;
-  name: string;
-  domain: string;
-  region: string;
-  plan: string;
-  features: string[];
-  limits: {
-    apiCalls: number;
-    storage: number;
-    users: number;
-    tables: number;
-  };
-  usage: {
-    apiCalls: number;
-    storage: number;
-    users: number;
-    tables: number;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
-
-// ============================================================================
-// EXPORTAÇÕES
-// ============================================================================
-
-export type {
-  XanoResponse,
-  XanoPaginatedResponse,
-  XanoError,
-  XanoAuthRequest,
-  XanoAuthResponse,
-  XanoRefreshRequest,
-  XanoRefreshResponse,
-  XanoLogoutRequest,
-  XanoLogoutResponse,
-  XanoClientRequest,
-  XanoClientResponse,
-  XanoClientListResponse,
-  XanoClientSearchParams,
-  XanoTicketRequest,
-  XanoTicketResponse,
-  XanoTicketListResponse,
-  XanoTicketSearchParams,
-  XanoArticleRequest,
-  XanoArticleResponse,
-  XanoArticleListResponse,
-  XanoArticleSearchParams,
-  XanoTeamMemberRequest,
-  XanoTeamMemberResponse,
-  XanoTeamMemberListResponse,
-  XanoTeamMemberSearchParams,
-  XanoNPSRequest,
-  XanoNPSResponse,
-  XanoNPSListResponse,
-  XanoNPSSearchParams,
-  XanoReportRequest,
-  XanoReportResponse,
-  XanoReportListResponse,
-  XanoReportSearchParams,
-  XanoCreateRequest,
-  XanoUpdateRequest,
-  XanoDeleteRequest,
-  XanoBulkRequest,
-  XanoBulkResponse,
-  XanoFilter,
-  XanoSort,
-  XanoQuery,
-  XanoWebhookPayload,
-  XanoWebhookConfig,
-  XanoTableInfo,
-  XanoWorkspaceInfo
-};

@@ -101,7 +101,7 @@ export const useBaseConhecimento = () => {
   const [ordenacao, setOrdenacao] = useState<'titulo' | 'data' | 'visualizacoes' | 'avaliacao'>('data');
 
   const artigosFiltrados = useMemo(() => {
-    let resultados = artigos.filter(artigo => {
+    const resultados = artigos.filter(artigo => {
       const matchBusca = artigo.titulo.toLowerCase().includes(busca.toLowerCase()) ||
                         artigo.conteudo.toLowerCase().includes(busca.toLowerCase()) ||
                         artigo.tags.some(tag => tag.toLowerCase().includes(busca.toLowerCase()));

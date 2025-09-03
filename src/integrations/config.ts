@@ -9,7 +9,7 @@ export interface IntegrationConfig {
 }
 
 export const integrationConfig: IntegrationConfig = {
-  backend: 'xano', // Alterar para 'xano' quando estiver pronto
+  backend: 'xano', // Configurado para usar Xano como backend principal
   enableMigration: true,
   syncInterval: 30000, // 30 segundos
 };

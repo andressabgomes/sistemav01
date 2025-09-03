@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,9 +28,28 @@ const StrategicClientsSection = () => {
     fetchStrategicClients();
   }, []);
 
+  const filterClients = useCallback(() => {
+    let filtered = clients;
+
+    if (searchTerm) {
+      filtered = filtered.filter(client => 
+        client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.code.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (selectedResponsible !== 'all') {
+      filtered = filtered.filter(client => 
+        client.responsible_team_member === selectedResponsible
+      );
+    }
+
+    setFilteredClients(filtered);
+  }, [clients, searchTerm, selectedResponsible]);
+
   useEffect(() => {
     filterClients();
-  }, [clients, searchTerm, selectedResponsible]);
+  }, [filterClients]);
 
   const fetchStrategicClients = async () => {
     try {
@@ -58,25 +77,6 @@ const StrategicClientsSection = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const filterClients = () => {
-    let filtered = clients;
-
-    if (searchTerm) {
-      filtered = filtered.filter(client => 
-        client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client.code.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    if (selectedResponsible !== 'all') {
-      filtered = filtered.filter(client => 
-        client.responsible_team_member === selectedResponsible
-      );
-    }
-
-    setFilteredClients(filtered);
   };
 
   const exportToCSV = () => {

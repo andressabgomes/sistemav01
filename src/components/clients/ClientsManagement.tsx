@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,13 +72,36 @@ const ClientsManagement = () => {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
 
+  const filterClients = useCallback(() => {
+    let filtered = clients;
+
+    if (searchTerm) {
+      filtered = filtered.filter(client => 
+        client.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.trade_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.document_number.includes(searchTerm)
+      );
+    }
+
+    if (selectedType !== 'all') {
+      filtered = filtered.filter(client => client.client_type === selectedType);
+    }
+
+    if (selectedStatus !== 'all') {
+      filtered = filtered.filter(client => client.status === selectedStatus);
+    }
+
+    setFilteredClients(filtered);
+  }, [clients, searchTerm, selectedType, selectedStatus]);
+
   useEffect(() => {
     fetchClients();
   }, []);
 
   useEffect(() => {
     filterClients();
-  }, [clients, searchTerm, selectedType, selectedStatus]);
+  }, [filterClients]);
 
   const fetchClients = async () => {
     try {
@@ -105,29 +128,6 @@ const ClientsManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const filterClients = () => {
-    let filtered = clients;
-
-    if (searchTerm) {
-      filtered = filtered.filter(client => 
-        client.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client.trade_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client.document_number.includes(searchTerm)
-      );
-    }
-
-    if (selectedType !== 'all') {
-      filtered = filtered.filter(client => client.client_type === selectedType);
-    }
-
-    if (selectedStatus !== 'all') {
-      filtered = filtered.filter(client => client.status === selectedStatus);
-    }
-
-    setFilteredClients(filtered);
   };
 
   const getStatusColor = (status: string) => {

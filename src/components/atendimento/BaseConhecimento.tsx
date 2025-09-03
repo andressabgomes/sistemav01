@@ -1,9 +1,13 @@
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, FileText, BookOpen, TrendingUp } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Plus, FileText, BookOpen, TrendingUp, Search, Filter, Eye, Edit, Trash2, Tag, Calendar, User } from 'lucide-react';
+import { Article, Category, ArticleFormData } from '@/types/entities';
 import { useToast } from '@/hooks/use-toast';
 import { useBaseConhecimento, Artigo } from '@/hooks/useBaseConhecimento';
 import CriarArtigoModal from './CriarArtigoModal';
@@ -67,13 +71,13 @@ const BaseConhecimento = () => {
     setArtigoEditando(null);
   };
 
-  const handleSalvarArtigo = (dadosOuId: any, dados?: any) => {
+  const handleSalvarArtigo = (dadosOuId: string | ArticleFormData, dados?: ArticleFormData) => {
     if (dados) {
       // É uma edição (id, dados)
-      atualizarArtigo(dadosOuId, dados);
+      atualizarArtigo(dadosOuId as string, dados);
     } else {
       // É criação (dados)
-      criarArtigo(dadosOuId);
+      criarArtigo(dadosOuId as ArticleFormData);
     }
   };
 

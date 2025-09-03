@@ -1,70 +1,99 @@
 import { useState, useEffect } from 'react';
 
-interface AppDetection {
-  isNativeApp: boolean;
+interface AppInfo {
+  name: string;
+  version: string;
+  platform: string;
+  userAgent: string;
+  isMobile: boolean;
+  isTablet: boolean;
+  isDesktop: boolean;
   isPWA: boolean;
-  isWebView: boolean;
-  platform: 'ios' | 'android' | 'web';
-  orientation: 'portrait' | 'landscape';
+  isStandalone: boolean;
+  isOnline: boolean;
+  connectionType?: string;
+  effectiveType?: string;
 }
 
-export const useAppDetection = (): AppDetection => {
-  const [detection, setDetection] = useState<AppDetection>({
-    isNativeApp: false,
+interface NetworkInfo {
+  effectiveType: string;
+  downlink: number;
+  rtt: number;
+}
+
+export const useAppDetection = (): AppInfo => {
+  const [appInfo, setAppInfo] = useState<AppInfo>({
+    name: 'StarPrint CRM',
+    version: '1.0.0',
+    platform: 'unknown',
+    userAgent: navigator.userAgent,
+    isMobile: false,
+    isTablet: false,
+    isDesktop: false,
     isPWA: false,
-    isWebView: false,
-    platform: 'web',
-    orientation: 'portrait'
+    isStandalone: false,
+    isOnline: navigator.onLine,
   });
 
   useEffect(() => {
-    const detectEnvironment = () => {
-      // Detectar PWA
-      const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
-                    (window.navigator as any).standalone ||
-                    document.referrer.includes('android-app://');
+    const detectPlatform = () => {
+      const userAgent = navigator.userAgent.toLowerCase();
+      const isMobile = /mobile|android|iphone|ipad|phone/i.test(userAgent);
+      const isTablet = /tablet|ipad/i.test(userAgent);
+      const isDesktop = !isMobile && !isTablet;
 
-      // Detectar WebView
-      const isWebView = /WebView|wv|Android.*(wv|\.0\.0\.0)|Version\/[\d\.]+.*Safari\/[^/]*$/.test(navigator.userAgent);
+      let platform = 'unknown';
+      if (/windows/i.test(userAgent)) platform = 'Windows';
+      else if (/macintosh|mac os x/i.test(userAgent)) platform = 'macOS';
+      else if (/linux/i.test(userAgent)) platform = 'Linux';
+      else if (/android/i.test(userAgent)) platform = 'Android';
+      else if (/iphone|ipad|ipod/i.test(userAgent)) platform = 'iOS';
 
-      // Detectar plataforma
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      const isAndroid = /Android/.test(navigator.userAgent);
-      
-      let platform: 'ios' | 'android' | 'web' = 'web';
-      if (isIOS) platform = 'ios';
-      else if (isAndroid) platform = 'android';
+      const isPWA = window.matchMedia('(display-mode: standalone)').matches;
+      const isStandalone = (window.navigator as Navigator & { standalone?: boolean }).standalone || false;
 
-      // Detectar orientação
-      const orientation = window.innerHeight > window.innerWidth ? 'portrait' : 'landscape';
-
-      // Detectar app nativo (Capacitor)
-      const isNativeApp = !!(window as any).Capacitor;
-
-      setDetection({
-        isNativeApp,
-        isPWA,
-        isWebView,
+      setAppInfo(prev => ({
+        ...prev,
         platform,
-        orientation
-      });
+        isMobile,
+        isTablet,
+        isDesktop,
+        isPWA,
+        isStandalone,
+      }));
     };
 
-    detectEnvironment();
-
-    // Escutar mudanças de orientação
-    const handleOrientationChange = () => {
-      setTimeout(detectEnvironment, 100);
+    const handleOnlineStatusChange = () => {
+      setAppInfo(prev => ({
+        ...prev,
+        isOnline: navigator.onLine,
+      }));
     };
 
-    window.addEventListener('orientationchange', handleOrientationChange);
-    window.addEventListener('resize', handleOrientationChange);
+    const detectNetworkInfo = () => {
+      if ('connection' in navigator) {
+        const connection = (navigator as Navigator & { connection?: NetworkInfo }).connection;
+        if (connection) {
+          setAppInfo(prev => ({
+            ...prev,
+            connectionType: connection.effectiveType,
+            effectiveType: connection.effectiveType,
+          }));
+        }
+      }
+    };
+
+    detectPlatform();
+    detectNetworkInfo();
+
+    window.addEventListener('online', handleOnlineStatusChange);
+    window.addEventListener('offline', handleOnlineStatusChange);
 
     return () => {
-      window.removeEventListener('orientationchange', handleOrientationChange);
-      window.removeEventListener('resize', handleOrientationChange);
+      window.removeEventListener('online', handleOnlineStatusChange);
+      window.removeEventListener('offline', handleOnlineStatusChange);
     };
   }, []);
 
-  return detection;
+  return appInfo;
 };

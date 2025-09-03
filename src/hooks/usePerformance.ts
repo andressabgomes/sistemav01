@@ -1,303 +1,133 @@
-import { useCallback, useRef, useEffect, useState } from 'react';
-import { APP_CONFIG } from '@/constants/app';
+import { useEffect, useRef, useCallback } from 'react';
 
-// ============================================================================
-// HOOKS DE PERFORMANCE CONSOLIDADOS
-// ============================================================================
+interface PerformanceMetrics {
+  componentName: string;
+  renderCount: number;
+  renderTime: number;
+  mountTime: number;
+  unmountTime: number;
+  interactions: Array<{
+    type: string;
+    timestamp: number;
+    duration: number;
+  }>;
+}
 
-/**
- * Hook para debounce otimizado com cleanup automático
- * @param callback - Função a ser executada com debounce
- * @param delay - Delay em milissegundos
- * @returns Função com debounce aplicado
- */
-export const useDebounce = <T extends (...args: any[]) => void>(
-  callback: T,
-  delay: number = APP_CONFIG.PERFORMANCE.DEBOUNCE_DELAY
-): T => {
-  const timeoutRef = useRef<NodeJS.Timeout>();
-  const callbackRef = useRef(callback);
+interface PerformanceConfig {
+  enableTracking: boolean;
+  enableLogging: boolean;
+  slowRenderThreshold: number;
+  maxInteractions: number;
+}
 
-  useEffect(() => {
-    callbackRef.current = callback;
-  }, [callback]);
-
-  const debouncedCallback = useCallback((...args: Parameters<T>) => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    
-    timeoutRef.current = setTimeout(() => {
-      callbackRef.current(...args);
-    }, delay);
-  }, [delay]) as T;
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
-
-  return debouncedCallback;
-};
-
-/**
- * Hook para throttle otimizado
- * @param callback - Função a ser executada com throttle
- * @param delay - Delay em milissegundos
- * @returns Função com throttle aplicado
- */
-export const useThrottle = <T extends (...args: any[]) => void>(
-  callback: T,
-  delay: number = APP_CONFIG.PERFORMANCE.THROTTLE_DELAY || 300
-): T => {
-  const lastRun = useRef(Date.now());
-  const callbackRef = useRef(callback);
-
-  useEffect(() => {
-    callbackRef.current = callback;
-  }, [callback]);
-
-  const throttledCallback = useCallback((...args: Parameters<T>) => {
-    if (Date.now() - lastRun.current >= delay) {
-      callbackRef.current(...args);
-      lastRun.current = Date.now();
-    }
-  }, [delay]) as T;
-
-  return throttledCallback;
-};
-
-/**
- * Hook para lazy loading com Intersection Observer
- * @param options - Opções do Intersection Observer
- * @returns Referência do elemento e status de visibilidade
- */
-export const useLazyLoad = (
-  options: IntersectionObserverInit = {}
-) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const targetRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      setIsVisible(entry.isIntersecting);
-    }, options);
-
-    if (targetRef.current) {
-      observer.observe(targetRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, [options]);
-
-  return { targetRef, isVisible };
-};
-
-/**
- * Hook para medir performance de componentes
- * @param componentName - Nome do componente para identificação
- * @returns Contador de renders e métricas de performance
- */
-export const usePerformanceMonitor = (componentName: string) => {
-  const startTime = useRef(performance.now());
-  const [renderCount, setRenderCount] = useState(0);
-  const [totalRenderTime, setTotalRenderTime] = useState(0);
-
-  useEffect(() => {
-    const endTime = performance.now();
-    const duration = endTime - startTime.current;
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[Performance] ${componentName} rendered in ${duration.toFixed(2)}ms`);
-    }
-    
-    setRenderCount(prev => prev + 1);
-    setTotalRenderTime(prev => prev + duration);
-    startTime.current = performance.now();
+export const usePerformance = (
+  componentName: string,
+  config: Partial<PerformanceConfig> = {}
+): {
+  trackRender: () => void;
+  trackInteraction: (type: string, duration?: number) => void;
+  getMetrics: () => PerformanceMetrics;
+  resetMetrics: () => void;
+} => {
+  const metricsRef = useRef<PerformanceMetrics>({
+    componentName,
+    renderCount: 0,
+    renderTime: 0,
+    mountTime: 0,
+    unmountTime: 0,
+    interactions: [],
   });
 
-  const averageRenderTime = renderCount > 0 ? totalRenderTime / renderCount : 0;
+  const configRef = useRef<PerformanceConfig>({
+    enableTracking: true,
+    enableLogging: false,
+    slowRenderThreshold: 16, // 60fps threshold
+    maxInteractions: 100,
+    ...config,
+  });
 
-  return { 
-    renderCount, 
-    averageRenderTime: averageRenderTime.toFixed(2),
-    totalRenderTime: totalRenderTime.toFixed(2)
-  };
-};
+  const mountTimeRef = useRef<number>(0);
+  const renderStartRef = useRef<number>(0);
 
-/**
- * Hook para cache de dados com TTL e localStorage
- * @param key - Chave única para o cache
- * @param ttl - Tempo de vida em milissegundos (padrão: 5 minutos)
- * @returns Funções para gerenciar cache
- */
-export const useCache = <T>(
-  key: string, 
-  ttl: number = 5 * 60 * 1000
-) => {
-  const [data, setData] = useState<T | null>(null);
-  const [isValid, setIsValid] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const trackRender = useCallback(() => {
+    if (!configRef.current.enableTracking) return;
 
-  const setCachedData = useCallback((newData: T) => {
-    const cacheItem = {
-      data: newData,
-      timestamp: Date.now(),
-      ttl
-    };
+    const now = performance.now();
     
-    try {
-      localStorage.setItem(key, JSON.stringify(cacheItem));
-      setData(newData);
-      setIsValid(true);
-      setLastUpdated(new Date());
-    } catch (error) {
-      console.warn(`[Cache] Erro ao salvar no localStorage: ${error}`);
-    }
-  }, [key, ttl]);
+    if (renderStartRef.current > 0) {
+      const renderTime = now - renderStartRef.current;
+      metricsRef.current.renderTime = renderTime;
+      metricsRef.current.renderCount++;
 
-  const getCachedData = useCallback((): T | null => {
-    try {
-      const cached = localStorage.getItem(key);
-      if (!cached) return null;
-
-      const cacheItem = JSON.parse(cached);
-      const isExpired = Date.now() - cacheItem.timestamp > cacheItem.ttl;
-
-      if (isExpired) {
-        localStorage.removeItem(key);
-        return null;
+      if (configRef.current.enableLogging && renderTime > configRef.current.slowRenderThreshold) {
+        console.warn(
+          `Slow render detected in ${componentName}: ${renderTime.toFixed(2)}ms`
+        );
       }
-
-      setData(cacheItem.data);
-      setIsValid(true);
-      setLastUpdated(new Date(cacheItem.timestamp));
-      return cacheItem.data;
-    } catch (error) {
-      console.warn(`[Cache] Erro ao ler do localStorage: ${error}`);
-      localStorage.removeItem(key);
-      return null;
-    }
-  }, [key]);
-
-  const clearCache = useCallback(() => {
-    try {
-      localStorage.removeItem(key);
-      setData(null);
-      setIsValid(false);
-      setLastUpdated(null);
-    } catch (error) {
-      console.warn(`[Cache] Erro ao limpar cache: ${error}`);
-    }
-  }, [key]);
-
-  const isExpired = useCallback((): boolean => {
-    if (!lastUpdated) return true;
-    return Date.now() - lastUpdated.getTime() > ttl;
-  }, [lastUpdated, ttl]);
-
-  // Carregar dados do cache na inicialização
-  useEffect(() => {
-    getCachedData();
-  }, [getCachedData]);
-
-  return {
-    data,
-    isValid,
-    lastUpdated,
-    isExpired: isExpired(),
-    setCachedData,
-    getCachedData,
-    clearCache
-  };
-};
-
-/**
- * Hook para estado otimizado com debounce
- * @param initialValue - Valor inicial
- * @param debounceMs - Delay para debounce em milissegundos
- * @returns Estado com funções de atualização
- */
-export const useOptimizedState = <T>(
-  initialValue: T,
-  debounceMs: number = APP_CONFIG.PERFORMANCE.DEBOUNCE_DELAY
-) => {
-  const [value, setValue] = useState<T>(initialValue);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isUpdatingRef = useRef(false);
-
-  const debouncedSetValue = useCallback((newValue: T | ((prev: T) => T)) => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
     }
 
-    isUpdatingRef.current = true;
+    renderStartRef.current = now;
+  }, [componentName]);
 
-    timeoutRef.current = setTimeout(() => {
-      setValue(newValue);
-      isUpdatingRef.current = false;
-    }, debounceMs);
-  }, [debounceMs]);
+  const trackInteraction = useCallback((type: string, duration = 0) => {
+    if (!configRef.current.enableTracking) return;
 
-  const setValueImmediate = useCallback((newValue: T | ((prev: T) => T)) => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
+    const interaction = {
+      type,
+      timestamp: performance.now(),
+      duration,
+    };
+
+    metricsRef.current.interactions.push(interaction);
+
+    // Manter apenas as últimas interações
+    if (metricsRef.current.interactions.length > configRef.current.maxInteractions) {
+      metricsRef.current.interactions.shift();
     }
-    setValue(newValue);
-    isUpdatingRef.current = false;
+
+    if (configRef.current.enableLogging && duration > 100) {
+      console.warn(
+        `Slow interaction detected in ${componentName}: ${type} took ${duration.toFixed(2)}ms`
+      );
+    }
+  }, [componentName]);
+
+  const getMetrics = useCallback((): PerformanceMetrics => {
+    return { ...metricsRef.current };
   }, []);
 
+  const resetMetrics = useCallback(() => {
+    metricsRef.current = {
+      componentName,
+      renderCount: 0,
+      renderTime: 0,
+      mountTime: 0,
+      unmountTime: 0,
+      interactions: [],
+    };
+  }, [componentName]);
+
+  useEffect(() => {
+    mountTimeRef.current = performance.now();
+    metricsRef.current.mountTime = mountTimeRef.current;
+
+    return () => {
+      const config = configRef.current;
+      metricsRef.current.unmountTime = performance.now();
+      
+      if (config.enableLogging) {
+        const totalTime = metricsRef.current.unmountTime - metricsRef.current.mountTime;
+        console.log(
+          `${componentName} unmounted after ${totalTime.toFixed(2)}ms with ${metricsRef.current.renderCount} renders`
+        );
+      }
+    };
+  }, [componentName]);
+
   return {
-    value,
-    setValue: debouncedSetValue,
-    setValueImmediate,
-    isUpdating: isUpdatingRef.current
+    trackRender,
+    trackInteraction,
+    getMetrics,
+    resetMetrics,
   };
-};
-
-/**
- * Hook para filtros com performance otimizada
- * @param items - Array de itens a serem filtrados
- * @param filterFn - Função de filtro
- * @returns Estado do filtro e itens filtrados
- */
-export const useFilterState = <T>(
-  items: T[],
-  filterFn: (item: T, query: string) => boolean
-) => {
-  const { value: query, setValue: setQuery } = useOptimizedState('');
-  
-  const filteredItems = query.trim() 
-    ? items.filter(item => filterFn(item, query.toLowerCase()))
-    : items;
-
-  return {
-    query,
-    setQuery,
-    filteredItems,
-    hasFilter: query.trim().length > 0,
-    totalItems: items.length,
-    filteredCount: filteredItems.length
-  };
-};
-
-// ============================================================================
-// EXPORTAÇÕES PARA COMPATIBILIDADE
-// ============================================================================
-
-// Exportar hooks individuais para uso direto
-export { useDebounce, useThrottle, useLazyLoad, usePerformanceMonitor, useCache, useOptimizedState, useFilterState };
-
-// Exportar como objeto para uso em lote
-export const performanceHooks = {
-  useDebounce,
-  useThrottle,
-  useLazyLoad,
-  usePerformanceMonitor,
-  useCache,
-  useOptimizedState,
-  useFilterState
 };

@@ -97,7 +97,7 @@ describe('SectionHeader', () => {
   });
 
   it('aplica classes responsivas corretamente', () => {
-    render(<SectionHeader {...defaultProps} />);
+    render(<SectionHeader {...defaultProps} size="md" />);
     
     const header = screen.getByTestId('section-header');
     expect(header).toHaveClass('text-2xl', 'md:text-3xl');
@@ -107,7 +107,7 @@ describe('SectionHeader', () => {
     render(
       <SectionHeader
         {...defaultProps}
-        icon={Filter}
+        emoji="🚀"
       />
     );
     

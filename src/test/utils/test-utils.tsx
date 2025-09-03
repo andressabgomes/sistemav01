@@ -3,6 +3,7 @@ import { render, RenderOptions } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { vi } from 'vitest';
 
 // Criar um QueryClient limpo para cada teste
 const createTestQueryClient = () => new QueryClient({
@@ -70,7 +71,7 @@ export const waitForElementToBeRemoved = async (element: HTMLElement) => {
 // Função helper para simular usuário logado
 export const mockAuthenticatedUser = () => {
   // Mock do contexto de autenticação
-  vi.mocked(require('@/contexts/AuthContext')).useAuth = vi.fn(() => ({
+  vi.mocked(vi.importMock('@/contexts/AuthContext')).useAuth = vi.fn(() => ({
     user: {
       id: 'test-user-id',
       email: 'test@example.com',
@@ -85,7 +86,7 @@ export const mockAuthenticatedUser = () => {
 
 // Função helper para simular usuário não logado
 export const mockUnauthenticatedUser = () => {
-  vi.mocked(require('@/contexts/AuthContext')).useAuth = vi.fn(() => ({
+  vi.mocked(vi.importMock('@/contexts/AuthContext')).useAuth = vi.fn(() => ({
     user: null,
     isAuthenticated: false,
     isLoading: false,

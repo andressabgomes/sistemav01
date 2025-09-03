@@ -3,13 +3,13 @@ import { renderHook } from '@testing-library/react';
 import { usePermissions } from './usePermissions';
 
 // Mock do contexto de autenticação
+const mockUseAuth = vi.fn();
+
 vi.mock('@/contexts/AuthContext', () => ({
-  useAuth: vi.fn(),
+  useAuth: mockUseAuth,
 }));
 
 describe('usePermissions', () => {
-  const mockUseAuth = vi.mocked(require('@/contexts/AuthContext').useAuth);
-
   beforeEach(() => {
     vi.clearAllMocks();
   });

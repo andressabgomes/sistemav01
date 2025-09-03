@@ -1,8 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import ticketService from '../services/ticketService';
 import { TicketFilters, Ticket } from '../types';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { 
+  MessageSquare, 
+  Clock, 
+  CheckCircle, 
+  AlertCircle, 
+  Plus, 
+  Search, 
+  Filter,
+  MoreHorizontal,
+  Phone,
+  Mail,
+  MessageCircle,
+  Star
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { Ticket, TicketStatus, TicketPriority } from '@/types/entities';
 
 export const TicketsPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -23,7 +46,7 @@ export const TicketsPage: React.FC = () => {
     refetchInterval: 15000, // Refetch a cada 15 segundos
   });
 
-  const handleFilterChange = (key: keyof TicketFilters, value: any) => {
+  const handleFilterChange = (key: keyof TicketFilters, value: string | number | boolean) => {
     setFilters(prev => ({
       ...prev,
       [key]: value,

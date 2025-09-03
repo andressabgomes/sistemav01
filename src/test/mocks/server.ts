@@ -1,5 +1,6 @@
 import { setupServer } from 'msw/node';
 import { handlers } from './handlers';
+import { HttpHandler } from 'msw';
 
 // Configurar o servidor do MSW para testes em Node.js
 export const server = setupServer(...handlers);
@@ -12,7 +13,7 @@ export const setupTestServer = () => {
 };
 
 // Função helper para adicionar handlers temporários
-export const addTemporaryHandlers = (temporaryHandlers: any[]) => {
+export const addTemporaryHandlers = (temporaryHandlers: HttpHandler[]) => {
   server.use(...temporaryHandlers);
 };
 

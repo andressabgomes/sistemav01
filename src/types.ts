@@ -44,21 +44,49 @@ export interface PaginatedResponse<T> {
   data: T[];
   pagination: {
     page: number;
-    pageSize: number;
+    limit: number;
     total: number;
     totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
   };
 }
 
 export interface ApiError {
   message: string;
   code?: string;
-  details?: any;
+  details?: Record<string, unknown>;
 }
 
 export interface ApiResponse<T> {
-  data: T;
   success: boolean;
+  data?: T;
+  error?: string;
   message?: string;
-  errors?: ApiError[];
+}
+
+export interface QueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sort?: string;
+  order?: 'asc' | 'desc';
+  filters?: Record<string, string | number | boolean>;
+}
+
+export interface SortParams {
+  field: string;
+  direction: 'asc' | 'desc';
+}
+
+export interface FilterParams {
+  field: string;
+  operator: 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'like' | 'in' | 'not_in';
+  value: string | number | boolean | string[] | number[];
+}
+
+export interface AdvancedQueryParams extends QueryParams {
+  sort?: SortParams[];
+  filters?: FilterParams[];
+  include?: string[];
 }

@@ -4,27 +4,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Eye, Star, Calendar, Tag, Edit, Copy, Share } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Article } from '@/types/entities';
 
 interface VisualizarArtigoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  artigo: {
-    id: number;
-    titulo: string;
-    categoria: string;
-    visualizacoes: number;
-    avaliacao: number;
-    dataAtualizacao: string;
-    conteudo: string;
-    tags: string[];
-    autor?: string;
-  };
+  artigo: Article | null;
   categoria: {
     nome: string;
     cor: string;
   } | undefined;
   onAvaliar: (id: number, nota: number) => void;
-  onEditar: (artigo: any) => void;
+  onEditar: (artigo: Article) => void;
 }
 
 const VisualizarArtigoModal = ({ isOpen, onClose, artigo, categoria, onAvaliar, onEditar }: VisualizarArtigoModalProps) => {
@@ -32,7 +23,7 @@ const VisualizarArtigoModal = ({ isOpen, onClose, artigo, categoria, onAvaliar, 
   const { toast } = useToast();
 
   const handleCopiarLink = () => {
-    const link = `${window.location.origin}/kb/artigo/${artigo.id}`;
+    const link = `${window.location.origin}/kb/artigo/${artigo?.id}`;
     navigator.clipboard.writeText(link);
     toast({
       title: "Link copiado!",
@@ -43,9 +34,9 @@ const VisualizarArtigoModal = ({ isOpen, onClose, artigo, categoria, onAvaliar, 
   const handleCompartilhar = () => {
     if (navigator.share) {
       navigator.share({
-        title: artigo.titulo,
-        text: artigo.conteudo.substring(0, 100) + '...',
-        url: `${window.location.origin}/kb/artigo/${artigo.id}`
+        title: artigo?.titulo,
+        text: artigo?.conteudo.substring(0, 100) + '...',
+        url: `${window.location.origin}/kb/artigo/${artigo?.id}`
       });
     } else {
       handleCopiarLink();
@@ -57,7 +48,7 @@ const VisualizarArtigoModal = ({ isOpen, onClose, artigo, categoria, onAvaliar, 
     
     try {
       await new Promise(resolve => setTimeout(resolve, 500));
-      onAvaliar(artigo.id, nota);
+      onAvaliar(artigo?.id || 0, nota);
       
       toast({
         title: "Avaliação enviada!",
@@ -80,7 +71,7 @@ const VisualizarArtigoModal = ({ isOpen, onClose, artigo, categoria, onAvaliar, 
         <DialogHeader>
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <DialogTitle className="text-xl mb-3">{artigo.titulo}</DialogTitle>
+              <DialogTitle className="text-xl mb-3">{artigo?.titulo}</DialogTitle>
               
               <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                 {categoria && (
@@ -89,23 +80,23 @@ const VisualizarArtigoModal = ({ isOpen, onClose, artigo, categoria, onAvaliar, 
                   </span>
                 )}
                 
-                {artigo.autor && (
+                {artigo?.autor && (
                   <span className="text-sm">por {artigo.autor}</span>
                 )}
                 
                 <div className="flex items-center space-x-1">
                   <Eye className="h-4 w-4" />
-                  <span>{artigo.visualizacoes} visualizações</span>
+                  <span>{artigo?.visualizacoes} visualizações</span>
                 </div>
                 
                 <div className="flex items-center space-x-1">
                   <Star className="h-4 w-4 text-yellow-500" />
-                  <span>{artigo.avaliacao} avaliação</span>
+                  <span>{artigo?.avaliacao} avaliação</span>
                 </div>
                 
                 <div className="flex items-center space-x-1">
                   <Calendar className="h-4 w-4" />
-                  <span>Atualizado em {new Date(artigo.dataAtualizacao).toLocaleDateString()}</span>
+                  <span>Atualizado em {new Date(artigo?.dataAtualizacao || '').toLocaleDateString()}</span>
                 </div>
               </div>
             </div>
@@ -127,7 +118,7 @@ const VisualizarArtigoModal = ({ isOpen, onClose, artigo, categoria, onAvaliar, 
         <div className="space-y-6 py-4">
           {/* Tags */}
           <div className="flex flex-wrap gap-2">
-            {artigo.tags.map((tag, index) => (
+            {artigo?.tags.map((tag, index) => (
               <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700">
                 <Tag className="h-3 w-3 mr-1" />
                 {tag}
@@ -139,7 +130,7 @@ const VisualizarArtigoModal = ({ isOpen, onClose, artigo, categoria, onAvaliar, 
           <div className="prose max-w-none">
             <div className="bg-gray-50 rounded-lg p-6">
               <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
-                {artigo.conteudo}
+                {artigo?.conteudo}
               </div>
             </div>
           </div>

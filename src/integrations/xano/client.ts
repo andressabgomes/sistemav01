@@ -20,13 +20,14 @@ import {
 } from './types';
 import { BaseEntity, QueryParams } from '@/types/entities';
 import { logger } from '@/lib/logger';
+import { XANO_CONFIG } from '@/config/xano';
 
 // ============================================================================
 // CLIENTE HTTP XANO.IO - STARPRINT CRM
 // ============================================================================
 
-// Configuração do cliente Xano
-const XANO_BASE_URL = import.meta.env.VITE_XANO_BASE_URL || 'https://your-workspace.xano.app';
+// Configuração do cliente Xano usando configuração centralizada
+const XANO_BASE_URL = XANO_CONFIG.API_BASE_URL;
 const XANO_API_KEY = import.meta.env.VITE_XANO_API_KEY;
 
 // Cliente HTTP para o Xano
@@ -36,7 +37,7 @@ export const xanoClient = axios.create({
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${XANO_API_KEY}`,
   },
-  timeout: 10000,
+  timeout: XANO_CONFIG.REQUEST.TIMEOUT,
 });
 
 // ============================================================================
@@ -46,14 +47,28 @@ export const xanoClient = axios.create({
 // Interceptor para requisições
 xanoClient.interceptors.request.use(
   (config: AxiosRequestConfig) => {
+    // Log da requisição se habilitado
+    if (XANO_CONFIG.LOGGING.ENABLED && XANO_CONFIG.LOGGING.REQUEST_LOGGING) {
+      logger.info('Xano API Request', {
+        method: config.method?.toUpperCase(),
+        url: config.url,
+        baseURL: config.baseURL,
+        headers: config.headers,
+      });
+    }
+
     // Adicionar token de autenticação se disponível
-    const token = localStorage.getItem('xano_auth_token');
+    const token = localStorage.getItem(XANO_CONFIG.STORAGE_KEYS.ACCESS_TOKEN);
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
     return config;
   },
   (error: unknown) => {
+    if (XANO_CONFIG.LOGGING.ENABLED && XANO_CONFIG.LOGGING.ERROR_LOGGING) {
+      logger.error('Xano Request Interceptor Error', { error });
+    }
     return Promise.reject(error);
   }
 );
@@ -61,15 +76,106 @@ xanoClient.interceptors.request.use(
 // Interceptor para respostas
 xanoClient.interceptors.response.use(
   (response: AxiosResponse) => {
+    // Log da resposta se habilitado
+    if (XANO_CONFIG.LOGGING.ENABLED && XANO_CONFIG.LOGGING.RESPONSE_LOGGING) {
+      logger.info('Xano API Response', {
+        status: response.status,
+        statusText: response.statusText,
+        url: response.config.url,
+        method: response.config.method?.toUpperCase(),
+      });
+    }
+    
     return response;
   },
-  (error: unknown) => {
-    // Tratamento de erros específicos do Xano
-    if (axios.isAxiosError(error) && error.response?.status === 401) {
-      // Token expirado ou inválido
-      localStorage.removeItem('xano_auth_token');
-      window.location.href = '/login';
+  async (error: unknown) => {
+    // Log do erro se habilitado
+    if (XANO_CONFIG.LOGGING.ENABLED && XANO_CONFIG.LOGGING.ERROR_LOGGING) {
+      logger.error('Xano API Error Response', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        url: error.config?.url,
+        method: error.config?.method?.toUpperCase(),
+      });
     }
+
+    // Tratamento de erros específicos do Xano
+    if (axios.isAxiosError(error)) {
+      switch (error.response?.status) {
+        case 401:
+          // Token expirado ou inválido
+          localStorage.removeItem(XANO_CONFIG.STORAGE_KEYS.ACCESS_TOKEN);
+          localStorage.removeItem(XANO_CONFIG.STORAGE_KEYS.REFRESH_TOKEN);
+          
+          // Tentar refresh automático se habilitado
+          if (XANO_CONFIG.AUTH.AUTO_REFRESH) {
+            try {
+              const refreshToken = localStorage.getItem(XANO_CONFIG.STORAGE_KEYS.REFRESH_TOKEN);
+              if (refreshToken) {
+                const refreshResponse = await xanoClient.post(XANO_CONFIG.ENDPOINTS.AUTH.REFRESH, {
+                  refreshToken
+                });
+                
+                if (refreshResponse.data?.data?.token) {
+                  localStorage.setItem(XANO_CONFIG.STORAGE_KEYS.ACCESS_TOKEN, refreshResponse.data.data.token);
+                  // Retry da requisição original
+                  const originalRequest = error.config;
+                  if (originalRequest) {
+                    originalRequest.headers.Authorization = `Bearer ${refreshResponse.data.data.token}`;
+                    return xanoClient(originalRequest);
+                  }
+                }
+              }
+            } catch (refreshError) {
+              // Refresh falhou, redirecionar para login
+              if (typeof window !== 'undefined') {
+                window.location.href = '/login';
+              }
+            }
+          } else {
+            // Redirecionar para login se refresh automático estiver desabilitado
+            if (typeof window !== 'undefined') {
+              window.location.href = '/login';
+            }
+          }
+          break;
+          
+        case 403:
+          // Acesso negado
+          logger.warn('Access denied', { 
+            url: error.config?.url,
+            status: error.response?.status 
+          });
+          break;
+          
+        case 404:
+          // Recurso não encontrado
+          logger.warn('Resource not found', { 
+            url: error.config?.url,
+            status: error.response?.status 
+          });
+          break;
+          
+        case 429:
+          // Rate limit excedido
+          logger.warn('Rate limit exceeded', { 
+            url: error.config?.url,
+            status: error.response?.status 
+          });
+          break;
+          
+        case 500:
+          // Erro interno do servidor
+          logger.error('Internal server error', { 
+            url: error.config?.url,
+            status: error.response?.status,
+            data: error.response?.data 
+          });
+          break;
+      }
+    }
+    
     return Promise.reject(error);
   }
 );
@@ -87,9 +193,9 @@ export const xanoAuth = {
       const response = await xanoClient.post<XanoAuthResponse>('/auth/login', credentials);
       
       if (response.data?.data?.token) {
-        localStorage.setItem('xano_auth_token', response.data.data.token);
-        localStorage.setItem('xano_refresh_token', response.data.data.refreshToken);
-        localStorage.setItem('xano_user', JSON.stringify(response.data.data.user));
+        localStorage.setItem(XANO_CONFIG.STORAGE_KEYS.ACCESS_TOKEN, response.data.data.token);
+        localStorage.setItem(XANO_CONFIG.STORAGE_KEYS.REFRESH_TOKEN, response.data.data.refreshToken);
+        localStorage.setItem(XANO_CONFIG.STORAGE_KEYS.USER, JSON.stringify(response.data.data.user));
         
         logger.info('Login successful', { 
           userId: response.data.data.user.id,
@@ -115,9 +221,9 @@ export const xanoAuth = {
     } catch (error) {
       console.error('Erro no logout:', error);
     } finally {
-      localStorage.removeItem('xano_auth_token');
-      localStorage.removeItem('xano_refresh_token');
-      localStorage.removeItem('xano_user');
+      localStorage.removeItem(XANO_CONFIG.STORAGE_KEYS.ACCESS_TOKEN);
+      localStorage.removeItem(XANO_CONFIG.STORAGE_KEYS.REFRESH_TOKEN);
+      localStorage.removeItem(XANO_CONFIG.STORAGE_KEYS.USER);
     }
     
     return {
@@ -132,8 +238,8 @@ export const xanoAuth = {
       const response = await xanoClient.post<XanoRefreshResponse>('/auth/refresh', request);
       
       if (response.data?.data?.token) {
-        localStorage.setItem('xano_auth_token', response.data.data.token);
-        localStorage.setItem('xano_refresh_token', response.data.data.refreshToken);
+        localStorage.setItem(XANO_CONFIG.STORAGE_KEYS.ACCESS_TOKEN, response.data.data.token);
+        localStorage.setItem(XANO_CONFIG.STORAGE_KEYS.REFRESH_TOKEN, response.data.data.refreshToken);
       }
       
       return response.data;
@@ -144,23 +250,23 @@ export const xanoAuth = {
 
   // Verificar se está autenticado
   isAuthenticated(): boolean {
-    return !!localStorage.getItem('xano_auth_token');
+    return !!localStorage.getItem(XANO_CONFIG.STORAGE_KEYS.ACCESS_TOKEN);
   },
 
   // Obter usuário atual
   getCurrentUser(): unknown {
-    const user = localStorage.getItem('xano_user');
+    const user = localStorage.getItem(XANO_CONFIG.STORAGE_KEYS.USER);
     return user ? JSON.parse(user) : null;
   },
 
   // Obter token
   getToken(): string | null {
-    return localStorage.getItem('xano_auth_token');
+    return localStorage.getItem(XANO_CONFIG.STORAGE_KEYS.ACCESS_TOKEN);
   },
 
   // Obter refresh token
   getRefreshToken(): string | null {
-    return localStorage.getItem('xano_refresh_token');
+    return localStorage.getItem(XANO_CONFIG.STORAGE_KEYS.REFRESH_TOKEN);
   }
 };
 

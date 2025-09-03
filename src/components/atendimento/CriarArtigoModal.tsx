@@ -1,12 +1,13 @@
 
-import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Save, X, Plus } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Article, Category, ArticleFormData } from '@/types/entities';
 
 interface CriarArtigoModalProps {
   isOpen: boolean;
@@ -16,8 +17,8 @@ interface CriarArtigoModalProps {
     nome: string;
     cor: string;
   }>;
-  artigo?: any;
-  onSalvar: (dadosOuId: any, dados?: any) => void;
+  artigo?: Article;
+  onSalvar: (dadosOuId: string | ArticleFormData, dados?: ArticleFormData) => void;
 }
 
 const CriarArtigoModal = ({ isOpen, onClose, categorias, artigo, onSalvar }: CriarArtigoModalProps) => {

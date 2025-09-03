@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -36,14 +36,6 @@ const ServiceHistoryManager = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedTechnician, setSelectedTechnician] = useState<string>('all');
 
-  useEffect(() => {
-    fetchServiceHistory();
-  }, []);
-
-  useEffect(() => {
-    filterRecords();
-  }, [serviceRecords, selectedServiceType, selectedStatus, selectedTechnician]);
-
   const fetchServiceHistory = async () => {
     try {
       const { data, error } = await supabase
@@ -69,7 +61,7 @@ const ServiceHistoryManager = () => {
     }
   };
 
-  const filterRecords = () => {
+  const filterRecords = useCallback(() => {
     let filtered = serviceRecords;
 
     if (selectedServiceType !== 'all') {
@@ -85,7 +77,15 @@ const ServiceHistoryManager = () => {
     }
 
     setFilteredRecords(filtered);
-  };
+  }, [serviceRecords, selectedServiceType, selectedStatus, selectedTechnician]);
+
+  useEffect(() => {
+    fetchServiceHistory();
+  }, []);
+
+  useEffect(() => {
+    filterRecords();
+  }, [filterRecords]);
 
   const getServiceTypeIcon = (type: string) => {
     switch (type) {

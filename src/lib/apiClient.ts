@@ -1,140 +1,142 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import { useAuth } from '@/contexts/AuthContext';
 
-// Configurações
-const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://x8ki-letl-twmt.n7.xano.io/api:hzPTkRyB';
-const tokenStorageKey = import.meta.env.VITE_TOKEN_STORAGE_KEY || 'starprint.token';
-const refreshStorageKey = import.meta.env.VITE_REFRESH_STORAGE_KEY || 'starprint.refresh';
+interface ApiResponse<T> {
+  data: T;
+  success: boolean;
+  message?: string;
+  error?: string;
+}
 
-// Cliente HTTP base
-const apiClient: AxiosInstance = axios.create({
-  baseURL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  timeout: 10000,
-});
+interface ApiError {
+  message: string;
+  code?: string;
+  details?: Record<string, unknown>;
+}
 
-// Fila de requisições durante refresh
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (value?: any) => void;
-  reject: (reason?: any) => void;
-}> = [];
+class ApiClient {
+  private client: AxiosInstance;
+  private authToken: string | null = null;
 
-// Processar fila de requisições
-const processQueue = (error: any, token: string | null = null) => {
-  failedQueue.forEach(({ resolve, reject }) => {
-    if (error) {
-      reject(error);
-    } else {
-      resolve(token);
-    }
-  });
-  
-  failedQueue = [];
-};
+  constructor(baseURL: string) {
+    this.client = axios.create({
+      baseURL,
+      timeout: 10000,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
-// Interceptor para requisições
-apiClient.interceptors.request.use(
-  (config: AxiosRequestConfig) => {
-    const token = localStorage.getItem(tokenStorageKey);
-    if (token) {
-      config.headers = {
-        ...config.headers,
-        Authorization: `Bearer ${token}`,
-      };
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
+    this.setupInterceptors();
   }
-);
 
-// Interceptor para respostas
-apiClient.interceptors.response.use(
-  (response: AxiosResponse) => {
-    return response;
-  },
-  async (error) => {
-    const originalRequest = error.config;
-
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      if (isRefreshing) {
-        // Adicionar à fila se refresh já estiver em andamento
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        }).then((token) => {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
-          return apiClient(originalRequest);
-        }).catch((err) => {
-          return Promise.reject(err);
-        });
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      const refreshToken = localStorage.getItem(refreshStorageKey);
-      
-      if (!refreshToken) {
-        processQueue(new Error('No refresh token'), null);
-        isRefreshing = false;
-        // Redirecionar para login
-        window.location.href = '/login';
+  private setupInterceptors(): void {
+    // Request interceptor para adicionar token
+    this.client.interceptors.request.use(
+      (config: AxiosRequestConfig) => {
+        if (this.authToken) {
+          config.headers = config.headers || {};
+          config.headers.Authorization = `Bearer ${this.authToken}`;
+        }
+        return config;
+      },
+      (error: AxiosError) => {
         return Promise.reject(error);
       }
+    );
 
-      try {
-        const response = await axios.post(`${baseURL}/auth/refresh`, {
-          refresh_token: refreshToken,
-        });
-
-        const { access_token, refresh_token: newRefreshToken } = response.data;
-        
-        // Salvar novos tokens
-        localStorage.setItem(tokenStorageKey, access_token);
-        if (newRefreshToken) {
-          localStorage.setItem(refreshStorageKey, newRefreshToken);
+    // Response interceptor para tratamento de erros
+    this.client.interceptors.response.use(
+      (response: AxiosResponse) => {
+        return response;
+      },
+      (error: AxiosError<ApiError>) => {
+        if (error.response?.status === 401) {
+          // Token expirado, redirecionar para login
+          this.handleUnauthorized();
         }
-
-        // Processar fila de requisições
-        processQueue(null, access_token);
-        
-        // Retry da requisição original
-        originalRequest.headers.Authorization = `Bearer ${access_token}`;
-        return apiClient(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-        
-        // Limpar tokens e redirecionar para login
-        localStorage.removeItem(tokenStorageKey);
-        localStorage.removeItem(refreshStorageKey);
-        window.location.href = '/login';
-        
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
+        return Promise.reject(error);
       }
+    );
+  }
+
+  private handleUnauthorized(): void {
+    // Implementar lógica de logout ou refresh token
+    console.warn('Unauthorized access detected');
+  }
+
+  setAuthToken(token: string): void {
+    this.authToken = token;
+  }
+
+  clearAuthToken(): void {
+    this.authToken = null;
+  }
+
+  async get<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    try {
+      const response = await this.client.get<T>(url, config);
+      return {
+        data: response.data,
+        success: true,
+      };
+    } catch (error) {
+      return this.handleError<T>(error);
+    }
+  }
+
+  async post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    try {
+      const response = await this.client.post<T>(url, data, config);
+      return {
+        data: response.data,
+        success: true,
+      };
+    } catch (error) {
+      return this.handleError<T>(error);
+    }
+  }
+
+  async put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    try {
+      const response = await this.client.put<T>(url, data, config);
+      return {
+        data: response.data,
+        success: true,
+      };
+    } catch (error) {
+      return this.handleError<T>(error);
+    }
+  }
+
+  async delete<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    try {
+      const response = await this.client.delete<T>(url, config);
+      return {
+        data: response.data,
+        success: true,
+      };
+    } catch (error) {
+      return this.handleError<T>(error);
+    }
+  }
+
+  private handleError<T>(error: unknown): ApiResponse<T> {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError<ApiError>;
+      return {
+        data: {} as T,
+        success: false,
+        error: axiosError.response?.data?.message || axiosError.message,
+      };
     }
 
-    return Promise.reject(error);
+    return {
+      data: {} as T,
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
   }
-);
+}
 
-// Helpers para gerenciar tokens
-export const tokenHelpers = {
-  getAccessToken: () => localStorage.getItem(tokenStorageKey),
-  getRefreshToken: () => localStorage.getItem(refreshStorageKey),
-  setTokens: (accessToken: string, refreshToken: string) => {
-    localStorage.setItem(tokenStorageKey, accessToken);
-    localStorage.setItem(refreshStorageKey, refreshToken);
-  },
-  clearTokens: () => {
-    localStorage.removeItem(tokenStorageKey);
-    localStorage.removeItem(refreshStorageKey);
-  },
-  isAuthenticated: () => !!localStorage.getItem(tokenStorageKey),
-};
-
-export default apiClient;
+export default ApiClient;

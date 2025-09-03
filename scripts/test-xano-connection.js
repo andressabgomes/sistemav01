@@ -5,17 +5,46 @@
  * Execute: node scripts/test-xano-connection.js
  */
 
-const axios = require('axios');
-require('dotenv').config();
+import axios from 'axios';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+// Obter o diretório atual do módulo ES6
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Carregar variáveis de ambiente do arquivo .env.local
+function loadEnv() {
+  try {
+    const envPath = join(__dirname, '..', '.env.local');
+    const envContent = readFileSync(envPath, 'utf8');
+    const env = {};
+    
+    envContent.split('\n').forEach(line => {
+      const [key, ...valueParts] = line.split('=');
+      if (key && !key.startsWith('#')) {
+        env[key.trim()] = valueParts.join('=').trim();
+      }
+    });
+    
+    return env;
+  } catch (error) {
+    console.log('⚠️  Arquivo .env.local não encontrado, usando configurações padrão');
+    return {};
+  }
+}
+
+const env = loadEnv();
 
 // Configurações do Xano
-const XANO_BASE_URL = process.env.VITE_API_BASE_URL || 'https://x8ki-letl-twmt.n7.xano.io/api:hzPTkRyB';
+const XANO_BASE_URL = env.VITE_XANO_BASE_URL || 'https://x8ki-letl-twmt.n7.xano.io/api:hzPTkRyB';
 const XANO_API_KEY = 'hzPTkRyB'; // Chave da API extraída da URL
 
 if (!XANO_BASE_URL) {
   console.error('❌ URL da API do Xano não configurada!');
-  console.log('\nConfigure seu arquivo .env com:');
-  console.log('VITE_API_BASE_URL=https://x8ki-letl-twmt.n7.xano.io/api:hzPTkRyB');
+  console.log('\nConfigure seu arquivo .env.local com:');
+  console.log('VITE_XANO_BASE_URL=https://x8ki-letl-twmt.n7.xano.io/api:hzPTkRyB');
   process.exit(1);
 }
 
@@ -206,8 +235,6 @@ async function main() {
 }
 
 // Executar se chamado diretamente
-if (require.main === module) {
-  main().catch(console.error);
-}
+main().catch(console.error);
 
-module.exports = { testConnection };
+export { testConnection };
