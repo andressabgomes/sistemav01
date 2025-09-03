@@ -568,7 +568,7 @@ Este projeto está sob a licença **MIT**. Veja o arquivo [LICENSE](LICENSE) par
 - **Vite** - Build tool
 - **Tailwind CSS** - Framework CSS
 - **Shadcn/ui** - Componentes
-- **Xano.io** - Backend as a Service
+- **Supabase** - Backend as a Service
 
 ### **👥 Contribuidores**
 - **Equipe StarPrint** - Desenvolvimento principal

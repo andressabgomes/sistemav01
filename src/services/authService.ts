@@ -1,5 +1,4 @@
-import { User, LoginCredentials } from '@/types';
-import supabaseAuthService from './supabaseAuthService';
+import { User, LoginCredentials } from '@/types/entities';
 
 interface AuthResponse {
   success: boolean;
