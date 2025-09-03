@@ -95,12 +95,14 @@ export interface QueryParams extends PaginationParams {
 
 export interface User extends BaseEntity {
   email: string;
-  username?: string;
-  first_name: string;
-  last_name: string;
+  name: string;
   role: UserRole;
-  permissions: Permission[];
-  is_active: boolean;
+  status: 'active' | 'inactive' | 'pending';
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  permissions?: Permission[];
+  is_active?: boolean;
   last_login?: string;
   avatar_url?: string;
   phone?: string;
@@ -109,6 +111,11 @@ export interface User extends BaseEntity {
 }
 
 export type UserRole = 'ADMIN' | 'MANAGER' | 'USER' | 'AGENT' | 'SUPPORT';
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
 
 export interface Permission {
   id: string;

@@ -7,6 +7,8 @@ import { LoginPage } from './pages/LoginPage';
 import { TicketsPage } from './pages/TicketsPage';
 import { AccessDeniedPage } from './pages/AccessDeniedPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { EnhancedDashboard } from './components/dashboard/EnhancedDashboard';
+import { AppLayout } from './components/layouts/AppLayout';
 import queryClient from './lib/queryClient';
 
 function App() {
@@ -22,12 +24,26 @@ function App() {
               {/* Rota de acesso negado - pública */}
               <Route path="/403" element={<AccessDeniedPage />} />
               
-              {/* Rota principal - protegida */}
+              {/* Rota principal - Dashboard */}
               <Route 
                 path="/" 
                 element={
                   <ProtectedRoute>
-                    <TicketsPage />
+                    <AppLayout>
+                      <EnhancedDashboard />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } 
+              />
+              
+              {/* Rota de tickets */}
+              <Route 
+                path="/tickets" 
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <TicketsPage />
+                    </AppLayout>
                   </ProtectedRoute>
                 } 
               />
@@ -37,16 +53,18 @@ function App() {
                 path="/admin" 
                 element={
                   <ProtectedRoute roles={["ADMIN"]}>
-                    <div className="min-h-screen bg-gray-50 p-6">
-                      <div className="max-w-7xl mx-auto">
-                        <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                          Painel Administrativo
-                        </h1>
-                        <p className="text-gray-600">
-                          Esta área é restrita apenas para administradores.
-                        </p>
+                    <AppLayout>
+                      <div className="min-h-screen bg-gray-50 p-6">
+                        <div className="max-w-7xl mx-auto">
+                          <h1 className="text-3xl font-bold text-gray-900 mb-4">
+                            Painel Administrativo
+                          </h1>
+                          <p className="text-muted-foreground">
+                            Esta área é restrita apenas para administradores.
+                          </p>
+                        </div>
                       </div>
-                    </div>
+                    </AppLayout>
                   </ProtectedRoute>
                 } 
               />
@@ -56,16 +74,18 @@ function App() {
                 path="/manager" 
                 element={
                   <ProtectedRoute roles={["ADMIN", "MANAGER"]}>
-                    <div className="min-h-screen bg-gray-50 p-6">
-                      <div className="max-w-7xl mx-auto">
-                        <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                          Painel de Gerência
-                        </h1>
-                        <p className="text-gray-600">
-                          Esta área é restrita para administradores e gerentes.
-                        </p>
+                    <AppLayout>
+                      <div className="min-h-screen bg-gray-50 p-6">
+                        <div className="max-w-7xl mx-auto">
+                          <h1 className="text-3xl font-bold text-gray-900 mb-4">
+                            Painel de Gerência
+                          </h1>
+                          <p className="text-muted-foreground">
+                            Esta área é restrita para administradores e gerentes.
+                          </p>
+                        </div>
                       </div>
-                    </div>
+                    </AppLayout>
                   </ProtectedRoute>
                 } 
               />

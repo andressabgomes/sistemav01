@@ -19,7 +19,10 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "test:watch": "vitest --watch",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "auth:create-users": "node scripts/create-test-users.js",
+    "auth:test": "node scripts/test-authentication.js",
+    "auth:debug": "node scripts/debug-auth.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

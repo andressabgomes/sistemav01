@@ -29,12 +29,15 @@ class SupabaseAuthService {
    */
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
+      console.log('🔐 SupabaseAuthService: Tentando autenticar usuário:', credentials.email);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email: credentials.email,
         password: credentials.password,
       });
 
       if (error) {
+        console.log('❌ Erro na autenticação Supabase:', error.message);
         return {
           success: false,
           error: error.message,
@@ -42,13 +45,17 @@ class SupabaseAuthService {
       }
 
       if (!data.user || !data.session) {
+        console.log('❌ Dados de sessão não encontrados');
         return {
           success: false,
-          error: 'Falha na autenticação',
+          error: 'Falha na autenticação - dados de sessão não encontrados',
         };
       }
 
+      console.log('✅ Autenticação Supabase bem-sucedida, User ID:', data.user.id);
+
       // Buscar dados do usuário na tabela users
+      console.log('🔍 Buscando dados do usuário na tabela users...');
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
@@ -56,9 +63,10 @@ class SupabaseAuthService {
         .single();
 
       if (userError || !userData) {
+        console.log('❌ Erro ao buscar usuário na tabela users:', userError?.message || 'Usuário não encontrado');
         return {
           success: false,
-          error: 'Usuário não encontrado no sistema',
+          error: 'Usuário não encontrado no sistema. Execute: npm run auth:create-users',
         };
       }
 
@@ -68,6 +76,10 @@ class SupabaseAuthService {
         name: `${userData.first_name} ${userData.last_name}`,
         role: userData.role,
         status: userData.status,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        created_at: userData.created_at,
+        updated_at: userData.updated_at,
       };
 
       return {
@@ -139,6 +151,10 @@ class SupabaseAuthService {
         name: `${userData.first_name} ${userData.last_name}`,
         role: userData.role,
         status: userData.status,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        created_at: userData.created_at,
+        updated_at: userData.updated_at,
       };
     } catch (error) {
       console.error('Erro ao obter usuário atual:', error);
@@ -216,6 +232,10 @@ class SupabaseAuthService {
         name: `${userRecord.first_name} ${userRecord.last_name}`,
         role: userRecord.role,
         status: userRecord.status,
+        first_name: userRecord.first_name,
+        last_name: userRecord.last_name,
+        created_at: userRecord.created_at,
+        updated_at: userRecord.updated_at,
       };
 
       return {
@@ -281,6 +301,74 @@ class SupabaseAuthService {
         callback(null);
       }
     });
+  }
+
+  /**
+   * Verificar se o usuário está autenticado (método síncrono)
+   */
+  isAuthenticated(): boolean {
+    const session = supabase.auth.getSession();
+    return !!session;
+  }
+
+  /**
+   * Obter token de acesso
+   */
+  getToken(): string | null {
+    const session = supabase.auth.getSession();
+    return session?.access_token || null;
+  }
+
+  /**
+   * Renovar token de acesso
+   */
+  async refreshToken(): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const { data, error } = await supabase.auth.refreshSession();
+      
+      if (error) {
+        return {
+          success: false,
+          error: error.message,
+        };
+      }
+
+      return {
+        success: true,
+        data: data.session,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro interno do servidor',
+      };
+    }
+  }
+
+  /**
+   * Obter dados do usuário atual (método getMe)
+   */
+  async getMe(): Promise<{ success: boolean; data?: User; error?: string }> {
+    try {
+      const user = await this.getCurrentUser();
+      
+      if (!user) {
+        return {
+          success: false,
+          error: 'Usuário não autenticado',
+        };
+      }
+
+      return {
+        success: true,
+        data: user,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro interno do servidor',
+      };
+    }
   }
 }
 
